@@ -19,7 +19,7 @@ seed_everything(1994)
 
 def setup_callbacks_loggers(args):
     
-    log_path = Path('/home/yyousfi1/LogFiles/comma/')
+    log_path = Path('/home/gregor/logs/')
     name = args.backbone
     version = args.version
     tb_logger = TensorBoardLogger(log_path, name=name, version=version)

@@ -221,7 +221,7 @@ class LitModel(pl.LightningModule):
                             type=str,
                             help='Training augmentation level c.f. retiriever')
         parser.add_argument('--data-path',
-                            default='/home/yyousfi1/commaai/comma10k',
+                            default='/home/gregor/Desktop/segnet/comma10k',
                             type=str,
                             metavar='dp',
                             help='data_path')
@@ -253,11 +253,11 @@ class LitModel(pl.LightningModule):
                             help='eps for adaptive optimizers',
                             dest='eps')
         parser.add_argument('--height',
-                            default=14*32,
+                            default=7*64,
                             type=int,
                             help='image height')
         parser.add_argument('--width',
-                            default=18*32,
+                            default=9*64,
                             type=int,
                             help='image width')
         parser.add_argument('--num-workers',
