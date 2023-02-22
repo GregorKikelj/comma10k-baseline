@@ -1,33 +1,12 @@
-"""
-Runs a model on a single node across multiple gpus.
-"""
 import warnings
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
-from pathlib import Path
 from argparse import ArgumentParser
 from LitModel import *
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
-from pytorch_lightning.loggers import TensorBoardLogger
-from pytorch_lightning.callbacks import LearningRateLogger
 
 seed_everything(1994)
-
-
-def setup_callbacks_loggers(args):
-    log_path = Path("/home/gregor/logs/segnet/")
-    name = args.backbone
-    version = args.version
-    tb_logger = TensorBoardLogger(log_path, name=name, version=version)
-    lr_logger = LearningRateLogger(logging_interval="epoch")
-    ckpt_callback = ModelCheckpoint(
-        filepath=Path(tb_logger.log_dir) / "checkpoints/{epoch:02d}_{val_loss:.4f}",
-        save_top_k=10,
-        save_last=True,
-    )
-
-    return ckpt_callback, tb_logger, lr_logger
 
 
 def main(args):
@@ -39,12 +18,7 @@ def main(args):
     else:
         model = LitModel(**vars(args))
 
-    ckpt_callback, tb_logger, lr_logger = setup_callbacks_loggers(args)
-
     trainer = Trainer(
-        checkpoint_callback=ckpt_callback,
-        logger=tb_logger,
-        callbacks=[lr_logger],
         gpus=1,
         max_epochs=args.epochs,
         row_log_interval=100,

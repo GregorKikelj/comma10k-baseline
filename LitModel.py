@@ -51,13 +51,6 @@ class LitModel(pl.LightningModule):
 
         self.save_hyperparameters()
 
-        self.train_custom_metrics = {
-            "train_acc": smp.utils.metrics.Accuracy(activation="softmax2d")
-        }
-        self.validation_custom_metrics = {
-            "val_acc": smp.utils.metrics.Accuracy(activation="softmax2d")
-        }
-
         self.preprocess_fn = smp.encoders.get_preprocessing_fn(
             self.backbone, pretrained="imagenet"
         )
@@ -95,14 +88,7 @@ class LitModel(pl.LightningModule):
         # 2. Compute loss & accuracy:
         train_loss = self.loss(y_logits, y)
 
-        metrics = {}
-        for metric_name in self.train_custom_metrics.keys():
-            metrics[metric_name] = self.train_custom_metrics[metric_name](y_logits, y)
-
-        # 3. Outputs:
-        output = OrderedDict(
-            {"loss": train_loss, "log": metrics, "progress_bar": metrics}
-        )
+        output = {"loss": train_loss}
 
         return output
 
@@ -117,11 +103,6 @@ class LitModel(pl.LightningModule):
 
         metrics = {"val_loss": val_loss}
 
-        for metric_name in self.validation_custom_metrics.keys():
-            metrics[metric_name] = self.validation_custom_metrics[metric_name](
-                y_logits, y
-            )
-
         return metrics
 
     def validation_epoch_end(self, outputs):
@@ -131,7 +112,10 @@ class LitModel(pl.LightningModule):
         keys = outputs[0].keys()
         metrics = {}
         for metric_name in keys:
-            metrics[metric_name] = outputs[0][metric_name]
+            metrics[metric_name] = _sync_ddp_if_available(
+                torch.stack([output[metric_name] for output in outputs]).mean(),
+                reduce_op="avg",
+            )
 
         metrics["step"] = self.current_epoch
 
