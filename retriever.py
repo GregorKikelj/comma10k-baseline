@@ -1,18 +1,13 @@
 import warnings
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
-import pandas as pd
 import numpy as np
-import pickle
 import cv2
 import albumentations as A
 from albumentations.core.composition import Compose
 from typing import Callable, List
 from pathlib import Path
-import os
 from torch.utils.data import Dataset
-import torch
-import sys
 
 
 def pad_to_multiple(x, k=32):
@@ -88,7 +83,6 @@ class TrainRetriever(Dataset):
         self.masks_folder = "masks"
 
     def __getitem__(self, index: int):
-
         image_name = self.image_names[index]
 
         image = cv2.imread(str(self.data_path / self.images_folder / image_name))
@@ -115,6 +109,4 @@ class TrainRetriever(Dataset):
         return image, mask
 
     def __len__(self) -> int:
-        return len(
-            self.image_names
-        )  # htiashgdkjhasdkjlghasdjkhghsuyhhb dsjhjksdfn glasjhdghf klashkjdsa hjksdgh sjdkkfhsd jhkhsd fkjasdjkf hasdjkfhas fdskjh
+        return len(self.image_names)

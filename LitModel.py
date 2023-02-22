@@ -12,7 +12,6 @@ import pytorch_lightning as pl
 from pytorch_lightning import _logger as log
 import random
 from retriever import *
-from pytorch_lightning.metrics.converters import _sync_ddp_if_available
 import segmentation_models_pytorch as smp
 
 
@@ -34,7 +33,6 @@ class LitModel(pl.LightningModule):
         weight_decay: float,
         **_
     ) -> None:
-
         super().__init__()
         self.data_path = Path(data_path)
         self.epochs = epochs
@@ -51,9 +49,7 @@ class LitModel(pl.LightningModule):
 
         self.save_hyperparameters()
 
-        self.preprocess_fn = smp.encoders.get_preprocessing_fn(
-            self.backbone, pretrained="imagenet"
-        )
+        self.preprocess_fn = smp.encoders.get_preprocessing_fn(self.backbone)
 
         self.__build_model()
 
@@ -61,10 +57,9 @@ class LitModel(pl.LightningModule):
         """Define model layers & loss."""
         # 1. net:
         self.net = smp.Unet(
-            self.backbone,
+            encoder_name=self.backbone,
             classes=len(self.class_values),
-            encoder_depth=4,
-            decoder_channels=[64, 32, 16, 8],
+            activation=None,
         )
 
         # 2. Loss:
@@ -93,7 +88,6 @@ class LitModel(pl.LightningModule):
         return output
 
     def validation_step(self, batch, batch_idx):
-
         # 1. Forward pass:
         x, y = batch
         y_logits = self.forward(x)
@@ -112,10 +106,7 @@ class LitModel(pl.LightningModule):
         keys = outputs[0].keys()
         metrics = {}
         for metric_name in keys:
-            metrics[metric_name] = _sync_ddp_if_available(
-                torch.stack([output[metric_name] for output in outputs]).mean(),
-                reduce_op="avg",
-            )
+            metrics[metric_name] = outputs[0][metric_name]
 
         metrics["step"] = self.current_epoch
 
@@ -158,7 +149,6 @@ class LitModel(pl.LightningModule):
         print("data ready")
 
     def setup(self, stage: str):
-
         image_names = np.loadtxt(
             self.data_path / "files_trainable", dtype="str"
         ).tolist()

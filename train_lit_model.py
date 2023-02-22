@@ -1,6 +1,3 @@
-import warnings
-
-warnings.simplefilter(action="ignore", category=FutureWarning)
 from argparse import ArgumentParser
 from LitModel import *
 from pytorch_lightning import Trainer, seed_everything
@@ -21,8 +18,6 @@ def main(args):
     trainer = Trainer(
         gpus=1,
         max_epochs=args.epochs,
-        row_log_interval=100,
-        log_save_interval=100,
         benchmark=True,
         resume_from_checkpoint=args.resume_from_checkpoint,
     )
