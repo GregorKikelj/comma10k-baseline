@@ -2,7 +2,8 @@
 Runs a model on a single node across multiple gpus.
 """
 import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
 from pathlib import Path
 from argparse import ArgumentParser
 from LitModel import *
@@ -13,68 +14,77 @@ from pytorch_lightning.callbacks import LearningRateLogger
 
 seed_everything(1994)
 
+
 def setup_callbacks_loggers(args):
-    log_path = Path('/home/gregor/logs/segnet/')
+    log_path = Path("/home/gregor/logs/segnet/")
     name = args.backbone
     version = args.version
     tb_logger = TensorBoardLogger(log_path, name=name, version=version)
-    lr_logger = LearningRateLogger(logging_interval='epoch')
-    ckpt_callback = ModelCheckpoint(filepath=Path(tb_logger.log_dir)/'checkpoints/{epoch:02d}_{val_loss:.4f}', 
-                                    save_top_k=10, save_last=True)
-   
+    lr_logger = LearningRateLogger(logging_interval="epoch")
+    ckpt_callback = ModelCheckpoint(
+        filepath=Path(tb_logger.log_dir) / "checkpoints/{epoch:02d}_{val_loss:.4f}",
+        save_top_k=10,
+        save_last=True,
+    )
+
     return ckpt_callback, tb_logger, lr_logger
 
 
 def main(args):
-    """ Main training routine specific for this project. """
-    
+    """Main training routine specific for this project."""
+
     if args.seed_from_checkpoint:
-        print('model seeded')
+        print("model seeded")
         model = LitModel.load_from_checkpoint(args.seed_from_checkpoint, **vars(args))
     else:
         model = LitModel(**vars(args))
 
     ckpt_callback, tb_logger, lr_logger = setup_callbacks_loggers(args)
-    
-    trainer = Trainer(checkpoint_callback=ckpt_callback,
-                     logger=tb_logger,
-                     callbacks=[lr_logger],
-                     gpus=1,
-                     max_epochs=args.epochs,
-                     row_log_interval=100,
-                     log_save_interval=100,
-                     distributed_backend='ddp',
-                     benchmark=True,
-                     sync_batchnorm=True,
-                     resume_from_checkpoint=args.resume_from_checkpoint)
-    
-    
+
+    trainer = Trainer(
+        checkpoint_callback=ckpt_callback,
+        logger=tb_logger,
+        callbacks=[lr_logger],
+        gpus=1,
+        max_epochs=args.epochs,
+        row_log_interval=100,
+        log_save_interval=100,
+        benchmark=True,
+        resume_from_checkpoint=args.resume_from_checkpoint,
+    )
+
     trainer.logger.log_hyperparams(model.hparams)
-    
+
     trainer.fit(model)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parent_parser = ArgumentParser(add_help=False)
 
     parser = LitModel.add_model_specific_args(parent_parser)
-    
-    parser.add_argument('--version',
-                         default=None,
-                         type=str,
-                         metavar='V',
-                         help='version or id of the net')
-    parser.add_argument('--resume-from-checkpoint',
-                         default=None,
-                         type=str,
-                         metavar='RFC',
-                         help='path to checkpoint')
-    parser.add_argument('--seed-from-checkpoint',
-                         default=None,
-                         type=str,
-                         metavar='SFC',
-                         help='path to checkpoint seed')
-    
+
+    parser.add_argument(
+        "--version",
+        default=None,
+        type=str,
+        metavar="V",
+        help="version or id of the net",
+    )
+    parser.add_argument(
+        "--resume-from-checkpoint",
+        default=None,
+        type=str,
+        metavar="RFC",
+        help="path to checkpoint",
+    )
+    parser.add_argument(
+        "--seed-from-checkpoint",
+        default=None,
+        type=str,
+        metavar="SFC",
+        help="path to checkpoint seed",
+    )
+
     args = parser.parse_args()
 
     main(args)
