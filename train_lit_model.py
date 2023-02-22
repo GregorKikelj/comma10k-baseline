@@ -3,23 +3,18 @@ Runs a model on a single node across multiple gpus.
 """
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
-import os
 from pathlib import Path
 from argparse import ArgumentParser
 from LitModel import *
-import torch
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import LearningRateLogger
-from pytorch_lightning.utilities.distributed import rank_zero_only
-from pytorch_lightning.callbacks import Callback
 
 seed_everything(1994)
 
 def setup_callbacks_loggers(args):
-    
-    log_path = Path('/home/yyousfi1/LogFiles/comma/')
+    log_path = Path('/home/gregor/logs/segnet/')
     name = args.backbone
     version = args.version
     tb_logger = TensorBoardLogger(log_path, name=name, version=version)
@@ -44,11 +39,8 @@ def main(args):
     trainer = Trainer(checkpoint_callback=ckpt_callback,
                      logger=tb_logger,
                      callbacks=[lr_logger],
-                     gpus=args.gpus,
-                     min_epochs=args.epochs,
+                     gpus=1,
                      max_epochs=args.epochs,
-                     precision=16,
-                     amp_backend='native',
                      row_log_interval=100,
                      log_save_interval=100,
                      distributed_backend='ddp',
@@ -62,9 +54,7 @@ def main(args):
     trainer.fit(model)
 
 
-def run_cli():
-    root_dir = os.path.dirname(os.path.realpath(__file__))
-    
+if __name__ == '__main__':
     parent_parser = ArgumentParser(add_help=False)
 
     parser = LitModel.add_model_specific_args(parent_parser)
@@ -88,7 +78,3 @@ def run_cli():
     args = parser.parse_args()
 
     main(args)
-
-
-if __name__ == '__main__':
-    run_cli()

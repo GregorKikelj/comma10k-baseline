@@ -1,17 +1,11 @@
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
-import pandas as pd
 import numpy as np 
-import pickle
 import argparse
 from collections import OrderedDict
 from pathlib import Path
-from tempfile import TemporaryDirectory
-from typing import Optional, Generator, Union
+from typing import Optional, Union
 import torch
-import torch.nn.functional as F
-from torch import optim
-from torch.nn import Module
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 from pytorch_lightning import _logger as log
@@ -25,19 +19,18 @@ class LitModel(pl.LightningModule):
     """
     def __init__(self,
                  data_path: Union[str, Path],
-                 backbone: str = 'efficientnet-b0',
-                 augmentation_level: str = 'light',
-                 batch_size: int = 32,
-                 lr: float = 1e-4,
-                 eps: float = 1e-7,
-                 height: int = 14*32,
-                 width: int = 18*32,
-                 num_workers: int = 6, 
-                 epochs: int = 50, 
-                 gpus: int = 1, 
-                 weight_decay: float = 1e-3,
+                 backbone: str,
+                 augmentation_level: str,
+                 batch_size: int,
+                 lr: float,
+                 eps: float,
+                 height: int,
+                 width: int,
+                 num_workers: int,
+                 epochs: int,
+                 weight_decay: float,
                  class_values: List[int] = [41,  76,  90, 124, 161, 0] # 0 added for padding
-                 ,**kwargs) -> None:
+                 ,**_) -> None:
         
         super().__init__()
         self.data_path = Path(data_path)
@@ -48,7 +41,6 @@ class LitModel(pl.LightningModule):
         self.height = height
         self.width = width
         self.num_workers = num_workers
-        self.gpus = gpus
         self.weight_decay = weight_decay
         self.eps = eps
         self.class_values = class_values 
@@ -69,17 +61,14 @@ class LitModel(pl.LightningModule):
         # 1. net:
 
         self.net = smp.Unet(self.backbone, classes=len(self.class_values), 
-                            activation=None, encoder_weights='imagenet')
+                            encoder_depth=4, decoder_channels=[64, 32, 16, 8])
 
         # 2. Loss:
         self.loss_func = lambda x, y: torch.nn.CrossEntropyLoss()(x, torch.argmax(y,axis=1))
 
     def forward(self, x):
         """Forward pass. Returns logits."""
-
-        x = self.net(x)
-        
-        return x
+        return self.net(x)
 
     def loss(self, logits, labels):
         """Use the loss_func"""
@@ -89,6 +78,7 @@ class LitModel(pl.LightningModule):
 
         # 1. Forward pass:
         x, y = batch
+        print(x.shape)
         y_logits = self.forward(x)
 
         # 2. Compute loss & accuracy:
@@ -98,7 +88,7 @@ class LitModel(pl.LightningModule):
         for metric_name in self.train_custom_metrics.keys():
             metrics[metric_name] = self.train_custom_metrics[metric_name](y_logits, y)
 
-        # 3. Outputs:        
+        # 3. Outputs:
         output = OrderedDict({'loss': train_loss,
                               'log': metrics,
                               'progress_bar': metrics})
@@ -136,7 +126,6 @@ class LitModel(pl.LightningModule):
 
 
     def configure_optimizers(self):
-
         optimizer = torch.optim.Adam
         optimizer_kwargs = {'eps': self.eps}
         
@@ -145,8 +134,8 @@ class LitModel(pl.LightningModule):
                               weight_decay=self.weight_decay, 
                               **optimizer_kwargs)
         
-        scheduler_kwargs = {'T_max': self.epochs*len(self.train_dataset)//self.gpus//self.batch_size,
-                            'eta_min':self.lr/50} 
+        scheduler_kwargs = {'T_max': self.epochs*len(self.train_dataset)//self.batch_size,
+                            'eta_min':self.lr/50}
         
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR
         interval = 'step'
@@ -221,7 +210,7 @@ class LitModel(pl.LightningModule):
                             type=str,
                             help='Training augmentation level c.f. retiriever')
         parser.add_argument('--data-path',
-                            default='/home/yyousfi1/commaai/comma10k',
+                            default='/home/gregor/Desktop/segnet/comma10k',
                             type=str,
                             metavar='dp',
                             help='data_path')
@@ -236,10 +225,6 @@ class LitModel(pl.LightningModule):
                             metavar='B',
                             help='batch size',
                             dest='batch_size')
-        parser.add_argument('--gpus',
-                            type=int,
-                            default=1,
-                            help='number of gpus to use')
         parser.add_argument('--lr',
                             '--learning-rate',
                             default=1e-4,
@@ -253,11 +238,11 @@ class LitModel(pl.LightningModule):
                             help='eps for adaptive optimizers',
                             dest='eps')
         parser.add_argument('--height',
-                            default=14*32,
+                            default=874,
                             type=int,
                             help='image height')
         parser.add_argument('--width',
-                            default=18*32,
+                            default=1164,
                             type=int,
                             help='image width')
         parser.add_argument('--num-workers',
@@ -267,7 +252,7 @@ class LitModel(pl.LightningModule):
                             help='number of CPU workers',
                             dest='num_workers')
         parser.add_argument('--weight-decay',
-                            default=1e-3,
+                            default=1e-6,
                             type=float,
                             metavar='wd',
                             help='Optimizer weight decay')
