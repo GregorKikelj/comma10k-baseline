@@ -18,11 +18,12 @@ def main(args):
         model = LitModel.load_from_checkpoint(args.seed_from_checkpoint, **vars(args))
     else:
         model = LitModel(**vars(args))
+
     wandb_logger = WandbLogger(project="segnet-c10k", name=args.version)
     wandb_logger.log_hyperparams(args)
-    now = datetime.datetime.now()
-    fnow = now.strftime("%d.%m-%H:%M")
-    folder = args.version + " " + fnow
+
+    folder = args.version + " " + datetime.datetime.now().strftime("%d.%m-%H:%M")
+
     checkpoint_callback = ModelCheckpoint(
         dirpath="/home/gregor/logs/segnet/",
         filename=folder + "/sn {epoch:02d}-{val_loss:.3f}",
@@ -31,6 +32,7 @@ def main(args):
         monitor="val_loss",
         mode="min",
     )
+
     trainer = Trainer(
         gpus=1,
         max_epochs=args.epochs,

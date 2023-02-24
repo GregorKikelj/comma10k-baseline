@@ -27,11 +27,46 @@ def get_scale_transform(height: int, width: int):
 
 
 def get_train_transforms(height: int, width: int, level: str):
-    print("train transforms: ", height, width)
     if level == "none":
+        return get_scale_transform(height, width)
+
+    elif level == "l1":
         return A.Compose(
             [
                 get_scale_transform(height, width),
+                A.HorizontalFlip(p=0.5),
+                A.ISONoise(p=1),
+                A.Sharpen(p=1),
+                A.CLAHE(clip_limit=2.0, p=1),
+                A.FancyPCA(alpha=0.5, p=1),
+            ]
+        )
+    elif level == "l2":
+        return A.Compose(
+            [
+                get_scale_transform(height, width),
+                A.HorizontalFlip(p=0.5),
+                A.ISONoise(p=1),
+                A.Sharpen(p=1),
+                A.RandomBrightnessContrast(
+                    brightness_limit=0.15, contrast_limit=0.2, p=1
+                ),
+                A.CLAHE(clip_limit=2.0, p=1),
+                A.FancyPCA(alpha=0.5, p=1),
+                A.CoarseDropout(
+                    min_height=16,
+                    max_height=64,
+                    min_width=16,
+                    max_width=64,
+                    mask_fill_value=0,
+                    p=1,
+                ),
+                A.ElasticTransform(
+                    border_mode=cv2.BORDER_CONSTANT,
+                    value=0,
+                    mask_value=0,
+                    p=1,
+                ),
             ]
         )
     else:
@@ -41,12 +76,7 @@ def get_train_transforms(height: int, width: int, level: str):
 
 
 def get_valid_transforms(height: int, width: int):
-    print("Valid transforms: ", height, width)
-    return A.Compose(
-        [
-            get_scale_transform(height, width),
-        ]
-    )
+    return get_scale_transform(height, width)
 
 
 def to_tensor(x, **_):
@@ -78,17 +108,15 @@ class TrainRetriever(Dataset):
         self.transforms = transforms
         self.preprocess = get_preprocessing(preprocess_fn)
         self.class_values = class_values
-        self.images_folder = "imgs"
-        self.masks_folder = "masks"
 
     def __getitem__(self, index: int):
         image_name = self.image_names[index]
 
-        image = cv2.imread(str(self.data_path / self.images_folder / image_name))
+        image = cv2.imread(str(self.data_path / "imgs" / image_name))
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         mask = cv2.imread(
-            str(self.data_path / self.masks_folder / image_name), 0
+            str(self.data_path / "masks" / image_name), cv2.IMREAD_GRAYSCALE
         ).astype("uint8")
 
         if self.transforms:

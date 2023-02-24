@@ -54,8 +54,8 @@ class LitModel(pl.LightningModule):
         # 1. net:
         self.net = smp.Unet(
             encoder_name=self.backbone,
+            encoder_weights="imagenet",
             classes=len(self.class_values),
-            activation=None,
         )
 
         # 2. Loss:

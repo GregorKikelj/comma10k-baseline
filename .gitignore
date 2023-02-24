@@ -2,4 +2,4 @@ scrap*
 __pycache__/
 .ipynb_checkpoints/
 wandb/
-testing.py
+testing.*
