@@ -1,9 +1,5 @@
-import warnings
-
-warnings.simplefilter(action="ignore", category=FutureWarning)
 import numpy as np
 import argparse
-from collections import OrderedDict
 from pathlib import Path
 from typing import Optional, Union
 import torch
@@ -87,6 +83,12 @@ class LitModel(pl.LightningModule):
 
         return output
 
+    def training_epoch_end(self, outputs) -> None:
+        self.log("train_loss", outputs[0]["loss"])
+        self.log(
+            "lr", self.trainer.optimizers[0].param_groups[0]["lr"]
+        )  # I didn't come up with this code :)
+
     def validation_step(self, batch, batch_idx):
         # 1. Forward pass:
         x, y = batch
@@ -100,27 +102,18 @@ class LitModel(pl.LightningModule):
         return metrics
 
     def validation_epoch_end(self, outputs):
-        """Compute and log training loss and accuracy at the epoch level.
-        Average statistics accross GPUs in case of DDP
-        """
-        keys = outputs[0].keys()
-        metrics = {}
-        for metric_name in keys:
-            metrics[metric_name] = outputs[0][metric_name]
+        """Compute and log training loss and accuracy at the epoch level."""
 
-        metrics["step"] = self.current_epoch
+        self.log("val_loss", outputs[0]["val_loss"])
 
-        return {"log": metrics}
+        return {"log": outputs}
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam
-        optimizer_kwargs = {"eps": self.eps}
-
-        optimizer = optimizer(
+        optimizer = torch.optim.Adam(
             self.parameters(),
             lr=self.lr,
             weight_decay=self.weight_decay,
-            **optimizer_kwargs
+            eps=self.eps,
         )
 
         scheduler_kwargs = {

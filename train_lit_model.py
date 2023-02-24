@@ -1,7 +1,11 @@
 from argparse import ArgumentParser
+import wandb
+
 from LitModel import *
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
+from pytorch_lightning.loggers import WandbLogger
+import datetime
 
 seed_everything(1994)
 
@@ -14,12 +18,26 @@ def main(args):
         model = LitModel.load_from_checkpoint(args.seed_from_checkpoint, **vars(args))
     else:
         model = LitModel(**vars(args))
-
+    wandb_logger = WandbLogger(project="segnet-c10k", name=args.version)
+    wandb_logger.log_hyperparams(args)
+    now = datetime.datetime.now()
+    fnow = now.strftime("%d.%m-%H:%M")
+    folder = args.version + " " + fnow
+    checkpoint_callback = ModelCheckpoint(
+        dirpath="/home/gregor/logs/segnet/",
+        filename=folder + "/sn {epoch:02d}-{val_loss:.3f}",
+        auto_insert_metric_name=False,
+        save_top_k=10,
+        monitor="val_loss",
+        mode="min",
+    )
     trainer = Trainer(
         gpus=1,
         max_epochs=args.epochs,
         benchmark=True,
         resume_from_checkpoint=args.resume_from_checkpoint,
+        logger=wandb_logger,
+        callbacks=[checkpoint_callback],
     )
 
     trainer.logger.log_hyperparams(model.hparams)
@@ -57,3 +75,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     main(args)
+
+    wandb.finish()
