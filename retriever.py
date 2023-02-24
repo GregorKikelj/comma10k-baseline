@@ -11,29 +11,7 @@ def pad_to_multiple(x, k=32):
     return int(k * (np.ceil(x / k)))
 
 
-def get_train_transforms(height: int, width: int, level: str):
-    print("train transforms: ", height, width)
-    if level == "none":
-        return A.Compose(
-            [
-                A.Resize(height=height, width=width),
-                A.PadIfNeeded(
-                    pad_to_multiple(height),
-                    pad_to_multiple(width),
-                    border_mode=cv2.BORDER_CONSTANT,
-                    value=0,
-                    mask_value=0,
-                ),
-            ]
-        )
-    else:
-        # throw error
-        print("Invalid augmentation level")
-        raise ValueError
-
-
-def get_valid_transforms(height: int, width: int):
-    print("Valid transforms: ", height, width)
+def get_scale_transform(height: int, width: int):
     return A.Compose(
         [
             A.Resize(height=height, width=width),
@@ -48,16 +26,40 @@ def get_valid_transforms(height: int, width: int):
     )
 
 
-def to_tensor(x, **kwargs):
+def get_train_transforms(height: int, width: int, level: str):
+    print("train transforms: ", height, width)
+    if level == "none":
+        return A.Compose(
+            [
+                get_scale_transform(height, width),
+            ]
+        )
+    else:
+        # throw error
+        print("Invalid augmentation level")
+        raise ValueError
+
+
+def get_valid_transforms(height: int, width: int):
+    print("Valid transforms: ", height, width)
+    return A.Compose(
+        [
+            get_scale_transform(height, width),
+        ]
+    )
+
+
+def to_tensor(x, **_):
     return x.transpose(2, 0, 1).astype("float32")
 
 
 def get_preprocessing(preprocessing_fn: Callable):
-    _transform = [
-        A.Lambda(image=preprocessing_fn),
-        A.Lambda(image=to_tensor, mask=to_tensor),
-    ]
-    return A.Compose(_transform)
+    return A.Compose(
+        [
+            A.Lambda(image=preprocessing_fn),
+            A.Lambda(image=to_tensor, mask=to_tensor),
+        ]
+    )
 
 
 class TrainRetriever(Dataset):
