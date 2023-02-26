@@ -47,24 +47,16 @@ def get_train_transforms(height: int, width: int, level: str):
                 get_scale_transform(height, width),
                 A.HorizontalFlip(p=0.5),
                 A.ISONoise(p=1),
-                A.Sharpen(p=1),
                 A.RandomBrightnessContrast(
                     brightness_limit=0.15, contrast_limit=0.2, p=1
                 ),
                 A.CLAHE(clip_limit=2.0, p=1),
-                A.FancyPCA(alpha=0.5, p=1),
                 A.CoarseDropout(
                     min_height=16,
                     max_height=64,
                     min_width=16,
                     max_width=64,
                     mask_fill_value=0,
-                    p=1,
-                ),
-                A.ElasticTransform(
-                    border_mode=cv2.BORDER_CONSTANT,
-                    value=0,
-                    mask_value=0,
                     p=1,
                 ),
             ]
@@ -117,7 +109,9 @@ class TrainRetriever(Dataset):
 
         mask = cv2.imread(
             str(self.data_path / "masks" / image_name), cv2.IMREAD_GRAYSCALE
-        ).astype("uint8")
+        ).astype(
+            "uint8"
+        )  # masks aren't grayscale but this seems to work
 
         if self.transforms:
             sample = self.transforms(image=image, mask=mask)

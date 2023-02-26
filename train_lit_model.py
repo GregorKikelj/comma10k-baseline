@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 import wandb
+import pickle
 
 from LitModel import *
 from pytorch_lightning import Trainer, seed_everything
@@ -27,7 +28,7 @@ def main(args):
     checkpoint_callback = ModelCheckpoint(
         dirpath="/home/gregor/logs/segnet/",
         filename=folder + "/sn {epoch:02d}-{val_loss:.3f}",
-        auto_insert_metric_name=False,
+        # auto_insert_metric_name=False,
         save_top_k=10,
         monitor="val_loss",
         mode="min",
@@ -75,6 +76,7 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+    # pickle.dump(args, open("args.p", "wb"))
 
     main(args)
 

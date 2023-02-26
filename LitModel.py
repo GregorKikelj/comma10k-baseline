@@ -1,7 +1,7 @@
 import numpy as np
 import argparse
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 import torch
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
@@ -80,14 +80,9 @@ class LitModel(pl.LightningModule):
         train_loss = self.loss(y_logits, y)
 
         output = {"loss": train_loss}
-
+        self.log("train_loss", train_loss)
+        self.log("lr", self.trainer.optimizers[0].param_groups[0]["lr"])
         return output
-
-    def training_epoch_end(self, outputs) -> None:
-        self.log("train_loss", outputs[0]["loss"])
-        self.log(
-            "lr", self.trainer.optimizers[0].param_groups[0]["lr"]
-        )  # I didn't come up with this code :)
 
     def validation_step(self, batch, batch_idx):
         # 1. Forward pass:
@@ -98,15 +93,12 @@ class LitModel(pl.LightningModule):
         val_loss = self.loss(y_logits, y)
 
         metrics = {"val_loss": val_loss}
-
         return metrics
 
     def validation_epoch_end(self, outputs):
-        """Compute and log training loss and accuracy at the epoch level."""
-
-        self.log("val_loss", outputs[0]["val_loss"])
-
-        return {"log": outputs}
+        avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
+        print("val_loss", avg_loss)
+        self.log("val_loss", avg_loss)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
@@ -121,13 +113,14 @@ class LitModel(pl.LightningModule):
             "eta_min": self.lr / 50,
         }
 
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR
-        interval = "step"
-        scheduler = scheduler(optimizer, **scheduler_kwargs)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, **scheduler_kwargs
+        )
 
-        return [optimizer], [
-            {"scheduler": scheduler, "interval": interval, "name": "lr"}
-        ]
+        # scheduler = torch.optim.lr_scheduler.PolynomialLR(
+        #     optimizer, self.epochs * len(self.train_dataset) // self.batch_size, 2.0
+        # )
+        return [optimizer], [{"scheduler": scheduler, "interval": "step", "name": "lr"}]
 
     def prepare_data(self):
         """Data download is not part of this script
@@ -173,12 +166,11 @@ class LitModel(pl.LightningModule):
     def __dataloader(self, train):
         """Train/validation loaders."""
 
-        _dataset = self.train_dataset if train else self.valid_dataset
         loader = DataLoader(
-            dataset=_dataset,
+            dataset=self.train_dataset if train else self.valid_dataset,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
-            shuffle=True if train else False,
+            shuffle=train,
         )
 
         return loader
