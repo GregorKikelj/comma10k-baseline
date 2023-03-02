@@ -27,6 +27,7 @@ class LitModel(pl.LightningModule):
         num_workers: int,
         epochs: int,
         weight_decay: float,
+        network: str,
         **_
     ) -> None:
         super().__init__()
@@ -39,6 +40,7 @@ class LitModel(pl.LightningModule):
         self.width = width
         self.num_workers = num_workers
         self.weight_decay = weight_decay
+        self.network = network
         self.eps = eps
         self.class_values = [41, 76, 90, 124, 161, 0]  # 0 for padding
         self.augmentation_level = augmentation_level
@@ -51,12 +53,18 @@ class LitModel(pl.LightningModule):
 
     def __build_model(self):
         """Define model layers & loss."""
-        # 1. net:
-        self.net = smp.Unet(
-            encoder_name=self.backbone,
-            encoder_weights="imagenet",
-            classes=len(self.class_values),
-        )
+        if self.network == "unet":
+            self.net = smp.Unet(
+                encoder_name=self.backbone,
+                encoder_weights="imagenet",
+                classes=len(self.class_values),
+            )
+        elif self.network == "deeplab":
+            self.net = smp.DeepLabV3Plus(
+                encoder_name=self.backbone,
+                encoder_weights="imagenet",
+                classes=len(self.class_values),
+            )
 
         # 2. Loss:
         self.loss_func = lambda x, y: torch.nn.CrossEntropyLoss()(
@@ -196,6 +204,12 @@ class LitModel(pl.LightningModule):
         parser.add_argument(
             "--augmentation-level",
             default="none",
+            type=str,
+            help="Training augmentation level c.f. retiriever",
+        )
+        parser.add_argument(
+            "--network",
+            default="unet",
             type=str,
             help="Training augmentation level c.f. retiriever",
         )

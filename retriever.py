@@ -1,3 +1,7 @@
+import warnings
+
+warnings.simplefilter(action="ignore", category=FutureWarning)
+
 import numpy as np
 import cv2
 import albumentations as A
@@ -46,20 +50,227 @@ def get_train_transforms(height: int, width: int, level: str):
             [
                 get_scale_transform(height, width),
                 A.HorizontalFlip(p=0.5),
-                A.ISONoise(p=1),
+                A.GaussNoise(p=0.5),
                 A.RandomBrightnessContrast(
                     brightness_limit=0.15, contrast_limit=0.2, p=1
                 ),
                 A.CLAHE(clip_limit=2.0, p=1),
+                A.Sharpen(p=1),
                 A.CoarseDropout(
-                    min_height=16,
-                    max_height=64,
-                    min_width=16,
-                    max_width=64,
+                    min_height=1,
+                    max_height=192,
+                    min_width=1,
+                    max_width=192,
                     mask_fill_value=0,
                     p=1,
                 ),
+                # moderate grid distortion
+                A.GridDistortion(
+                    num_steps=5,
+                    distort_limit=0.15,
+                    border_mode=cv2.BORDER_CONSTANT,
+                    value=0,
+                    mask_value=0,
+                    p=1,
+                ),
             ]
+        )
+    if level == "light":
+        return A.Compose(
+            [
+                A.HorizontalFlip(p=0.5),
+                A.GaussNoise(p=0.2),
+                A.OneOf(
+                    [
+                        A.CLAHE(p=1.0),
+                        A.RandomBrightness(p=1.0),
+                        A.RandomGamma(p=1.0),
+                    ],
+                    p=0.5,
+                ),
+                A.OneOf(
+                    [
+                        A.Sharpen(p=1.0),
+                        A.Blur(blur_limit=3, p=1.0),
+                        A.MotionBlur(blur_limit=3, p=1.0),
+                    ],
+                    p=0.5,
+                ),
+                A.OneOf(
+                    [
+                        A.RandomContrast(p=1.0),
+                        A.HueSaturationValue(p=1.0),
+                    ],
+                    p=0.5,
+                ),
+                A.Resize(height=height, width=width, p=1.0),
+                A.PadIfNeeded(
+                    pad_to_multiple(height),
+                    pad_to_multiple(width),
+                    border_mode=cv2.BORDER_CONSTANT,
+                    value=0,
+                    mask_value=0,
+                ),
+            ],
+            p=1.0,
+        )
+
+    elif level == "hard":
+        return A.Compose(
+            [
+                A.HorizontalFlip(p=0.5),
+                A.GaussNoise(p=0.2),
+                A.OneOf(
+                    [
+                        A.GridDistortion(
+                            border_mode=cv2.BORDER_CONSTANT,
+                            value=0,
+                            mask_value=0,
+                            p=1.0,
+                        ),
+                        A.ElasticTransform(
+                            alpha_affine=10,
+                            border_mode=cv2.BORDER_CONSTANT,
+                            value=0,
+                            mask_value=0,
+                            p=1.0,
+                        ),
+                        A.ShiftScaleRotate(
+                            shift_limit=0,
+                            scale_limit=0,
+                            rotate_limit=10,
+                            border_mode=cv2.BORDER_CONSTANT,
+                            value=0,
+                            mask_value=0,
+                            p=1.0,
+                        ),
+                        A.OpticalDistortion(
+                            border_mode=cv2.BORDER_CONSTANT,
+                            value=0,
+                            mask_value=0,
+                            p=1.0,
+                        ),
+                    ],
+                    p=0.5,
+                ),
+                A.OneOf(
+                    [
+                        A.CLAHE(p=1.0),
+                        A.RandomBrightness(p=1.0),
+                        A.RandomGamma(p=1.0),
+                        A.ISONoise(p=1.0),
+                    ],
+                    p=0.5,
+                ),
+                A.OneOf(
+                    [
+                        A.Sharpen(p=1.0),
+                        A.Blur(blur_limit=3, p=1.0),
+                        A.MotionBlur(blur_limit=3, p=1.0),
+                    ],
+                    p=0.5,
+                ),
+                A.OneOf(
+                    [
+                        A.RandomContrast(p=1.0),
+                        A.HueSaturationValue(p=1.0),
+                    ],
+                    p=0.5,
+                ),
+                A.Resize(height=height, width=width, p=1.0),
+                A.Cutout(p=0.3),
+                A.PadIfNeeded(
+                    pad_to_multiple(height),
+                    pad_to_multiple(width),
+                    border_mode=cv2.BORDER_CONSTANT,
+                    value=0,
+                    mask_value=0,
+                ),
+            ],
+            p=1.0,
+        )
+    elif level == "hard_weather":
+        return A.Compose(
+            [
+                A.HorizontalFlip(p=0.5),
+                A.GaussNoise(p=0.2),
+                A.OneOf(
+                    [
+                        A.GridDistortion(
+                            border_mode=cv2.BORDER_CONSTANT,
+                            value=0,
+                            mask_value=0,
+                            p=1.0,
+                        ),
+                        A.ElasticTransform(
+                            alpha_affine=10,
+                            border_mode=cv2.BORDER_CONSTANT,
+                            value=0,
+                            mask_value=0,
+                            p=1.0,
+                        ),
+                        A.ShiftScaleRotate(
+                            shift_limit=0,
+                            scale_limit=0,
+                            rotate_limit=10,
+                            border_mode=cv2.BORDER_CONSTANT,
+                            value=0,
+                            mask_value=0,
+                            p=1.0,
+                        ),
+                        A.OpticalDistortion(
+                            border_mode=cv2.BORDER_CONSTANT,
+                            value=0,
+                            mask_value=0,
+                            p=1.0,
+                        ),
+                    ],
+                    p=0.5,
+                ),
+                A.OneOf(
+                    [
+                        A.CLAHE(p=1.0),
+                        A.RandomBrightness(p=1.0),
+                        A.RandomGamma(p=1.0),
+                        A.ISONoise(p=1.0),
+                    ],
+                    p=0.5,
+                ),
+                A.OneOf(
+                    [
+                        A.Sharpen(p=1.0),
+                        A.Blur(blur_limit=3, p=1.0),
+                        A.MotionBlur(blur_limit=3, p=1.0),
+                    ],
+                    p=0.5,
+                ),
+                A.OneOf(
+                    [
+                        A.RandomContrast(p=1.0),
+                        A.HueSaturationValue(p=1.0),
+                    ],
+                    p=0.5,
+                ),
+                A.OneOf(
+                    [
+                        A.RandomFog(fog_coef_upper=0.8, p=1.0),
+                        A.RandomRain(p=1.0),
+                        A.RandomSnow(p=1.0),
+                        A.RandomSunFlare(src_radius=100, p=1.0),
+                    ],
+                    p=0.4,
+                ),
+                A.Resize(height=height, width=width, p=1.0),
+                A.Cutout(p=0.3),
+                A.PadIfNeeded(
+                    pad_to_multiple(height),
+                    pad_to_multiple(width),
+                    border_mode=cv2.BORDER_CONSTANT,
+                    value=0,
+                    mask_value=0,
+                ),
+            ],
+            p=1.0,
         )
     else:
         # throw error
