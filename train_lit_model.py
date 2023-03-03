@@ -4,6 +4,7 @@ import pickle
 
 from LitModel import *
 from pytorch_lightning import Trainer, seed_everything
+from pytorch_lightning.callbacks.stochastic_weight_avg import StochasticWeightAveraging
 from pytorch_lightning.callbacks.model_checkpoint import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 import datetime
@@ -27,8 +28,7 @@ def main(args):
 
     checkpoint_callback = ModelCheckpoint(
         dirpath="/home/gregor/logs/segnet/",
-        filename=folder + "/sn {epoch:02d}-{val_loss:.3f}",
-        # auto_insert_metric_name=False,
+        filename=folder + "/sn-{epoch:02d}-{val_loss:.4f}",
         save_top_k=10,
         monitor="val_loss",
         mode="min",
@@ -40,10 +40,16 @@ def main(args):
         benchmark=True,
         resume_from_checkpoint=args.resume_from_checkpoint,
         logger=wandb_logger,
-        callbacks=[checkpoint_callback],
+        callbacks=[
+            checkpoint_callback,
+            # StochasticWeightAveraging(
+            #     swa_lrs=2e-5, swa_epoch_start=0.0, annealing_epochs=0
+            # ),
+        ],
     )
 
     trainer.logger.log_hyperparams(model.hparams)
+    trainer.tune(model)
 
     trainer.fit(model)
 

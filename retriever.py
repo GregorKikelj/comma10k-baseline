@@ -33,7 +33,108 @@ def get_scale_transform(height: int, width: int):
 def get_train_transforms(height: int, width: int, level: str):
     if level == "none":
         return get_scale_transform(height, width)
-
+    elif level == "customv3":
+        return A.load("./epoch_29.json")
+    elif level == "customv3hard":
+        return A.Compose(
+            [
+                A.HorizontalFlip(p=0.5),
+                A.load("./epoch_29_mod.json"),
+                A.OneOf(
+                    [
+                        A.GridDistortion(
+                            border_mode=cv2.BORDER_CONSTANT,
+                            value=0,
+                            mask_value=0,
+                            p=1.0,
+                        ),
+                        A.ElasticTransform(
+                            alpha_affine=10,
+                            border_mode=cv2.BORDER_CONSTANT,
+                            value=0,
+                            mask_value=0,
+                            p=1.0,
+                        ),
+                        A.ShiftScaleRotate(
+                            shift_limit=0,
+                            scale_limit=0,
+                            rotate_limit=10,
+                            border_mode=cv2.BORDER_CONSTANT,
+                            value=0,
+                            mask_value=0,
+                            p=1.0,
+                        ),
+                        A.OpticalDistortion(
+                            border_mode=cv2.BORDER_CONSTANT,
+                            value=0,
+                            mask_value=0,
+                            p=1.0,
+                        ),
+                    ],
+                    p=0.8,
+                ),
+                A.OneOf(
+                    [
+                        A.Sharpen(p=1.0),
+                        A.Blur(blur_limit=3, p=1.0),
+                        A.MotionBlur(blur_limit=3, p=1.0),
+                    ],
+                    p=0.75,
+                ),
+            ]
+        )
+    elif level == "customv4":
+        return A.load("./epoch_46.json")
+    elif level == "customv4hard":
+        return A.Compose(
+            [
+                A.load("./epoch_46_mod.json"),  # great for color changes
+                A.HorizontalFlip(p=0.5),
+                A.GaussNoise(p=0.2),
+                A.OneOf(
+                    [
+                        A.GridDistortion(
+                            distort_limit=0.1,
+                            border_mode=cv2.BORDER_CONSTANT,
+                            value=0,
+                            mask_value=0,
+                            p=1.0,
+                        ),
+                        A.ElasticTransform(
+                            alpha_affine=5,
+                            border_mode=cv2.BORDER_CONSTANT,
+                            value=0,
+                            mask_value=0,
+                            p=1.0,
+                        ),
+                        A.ShiftScaleRotate(
+                            shift_limit=0,
+                            scale_limit=0,
+                            rotate_limit=2,
+                            border_mode=cv2.BORDER_CONSTANT,
+                            value=0,
+                            mask_value=0,
+                            p=1.0,
+                        ),
+                        A.OpticalDistortion(
+                            border_mode=cv2.BORDER_CONSTANT,
+                            value=0,
+                            mask_value=0,
+                            p=1.0,
+                        ),
+                    ],
+                    p=0.5,
+                ),
+                A.OneOf(
+                    [
+                        A.Sharpen(p=1.0),
+                        A.Blur(blur_limit=3, p=1.0),
+                        A.MotionBlur(blur_limit=3, p=1.0),
+                    ],
+                    p=0.5,
+                ),
+            ]
+        )
     elif level == "l1":
         return A.Compose(
             [
@@ -114,7 +215,6 @@ def get_train_transforms(height: int, width: int, level: str):
             ],
             p=1.0,
         )
-
     elif level == "hard":
         return A.Compose(
             [

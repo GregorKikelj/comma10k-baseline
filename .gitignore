@@ -3,5 +3,5 @@ __pycache__/
 .ipynb_checkpoints/
 wandb/
 testing*.*
-*.sh
 autoalb/
+*.ckpt
