@@ -1,36 +1,19 @@
-# 🚗 comma10k-baseline 
+# comma10k-baseline 
 
-A semantic segmentation baseline using [@comma.ai](https://github.com/commaai)'s [comma10k dataset](https://github.com/commaai/comma10k).
+Iterating on [yassine](https://github.com/YassineYousfi/comma10k-baseline)'s baseline
 
-Using U-Net with efficientnet encoder, this baseline reaches 0.044 validation loss.
-
-## Visualize
-Here is an example (randomly from the validation set, no cherry picking)
-#### Ground truth 
-![Ground truth](example.png)
-#### Predicted
-![Prediction](example_pred.png)
-
-## Info 
-
-The comma10k dataset is currently being labeled, stay tuned for:
-- A retrained model when the dataset is released
-- More features to use the model
-
+Replacing efficientnet with resnet seems to achieve a better valuation loss with much lower training and inference time.
+We also use stochastic weight averaging to improve the final model. We achieve a validation loss of 0.0417 training on the half-resolution images
 
 ## How to use
-This baseline uses two stages (i) 437x582 (ii) 874x1164 (full resolution)
-```
-python3 train_lit_model.py --backbone efficientnet-b4 --version first-stage --gpus 2 --batch-size 28 --epochs 100 --height 437 --width 582
-python3 train_lit_model.py --backbone efficientnet-b4 --version second-stage --gpus 2 --batch-size 7 --learning-rate 5e-5 --epochs 30 --height 874 --width 1164 --augmentation-level hard --seed-from-checkpoint .../efficientnet-b4/first-stage/checkpoints/last.ckpt
-```
+The model can be trained in 10 hours on a gtx 1080ti
+To train the model simply run `train.sh` script and change the data path and log paths. 
+Requirements.txt lists the versions that make autoalbument work though it would probably be a better idea to use their docker image. Generally newer packages should work fine(and autoupgrading works as of this readme creation)
 
-## WIP and ideas of contributions! 
-- Update to pytorch lightning 1.0
-- Try more image augmentations
-- Pretrain on a larger driving dataset (make sure license is permissive)
-- Try over sampling images with small or far objects
+## Possible improvements
+- train on bigger gpu with 16 bit support to allow for full resolution and larger batch sizes
 
+## Failures
+- deeplabv3+ doesn't seem better
+- [autoalbument](https://albumentations.ai/docs/autoalbument/) is better than not using augmentations. However even after training for about 2 days the augmentation still performs (slightly) worse than yassine's baseline `hard` augmentation. My hypothesis is that autoalbument tries to only make augmentations that don't significantly "worsen" the image but this then doesn't help much with overfitting.
 
-## Dependecies
-Python 3.5+, pytorch 1.6+ and dependencies listed in requirements.txt.
